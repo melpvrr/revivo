@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Borne Interactive REVIVO</title>
+    <style>
+        /* Global styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to right, #4caf50, #2196f3);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .screen {
+            display: none;
+            text-align: center;
+            width: 90%;
+            max-width: 600px;
+            padding: 20px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .logo img {
+            width: 150px;
+        }
+
+        .button {
+            background: #fff;
+            color: #4caf50;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .button:hover {
+            background: #4caf50;
+            color: #fff;
+        }
+
+        input, select, textarea {
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 1rem;
+            border: none;
+            border-radius: 5px;
+            width: 100%;
+        }
+
+        #menu {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            color: #000;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 0.9rem;
+            display: none;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+
+        #menu.active {
+            display: block;
+        }
+
+        #menu h3 {
+            margin-top: 0;
+        }
+
+        #cart {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            color: #000;
+            border-radius: 5px;
+            padding: 10px;
+            display: none;
+        }
+
+        #cart.active {
+            display: block;
+        }
+
+        #cart-items {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        #game-canvas {
+            background: #000;
+            width: 300px;
+            height: 300px;
+            margin: 20px auto;
+        }
+
+        #suggested-drinks ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        #suggested-drinks li {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        #suggested-drinks li:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="screen active" id="introScreen">
+        <div class="logo">
+            <img src="logo.png" alt="Revivo Logo">
+        </div>
+        <h1>Bienvenue sur la borne interactive Revivo</h1>
+        <button class="button" onclick="start()">Commencer</button>
+    </div>
+
+    <div class="screen" id="personalInfoScreen">
+        <h2>Entrez vos informations pour la réduction</h2>
+        <input type="text" id="firstName" placeholder="Prénom" required>
+        <input type="text" id="lastName" placeholder="Nom" required>
+        <input type="number" id="age" placeholder="Âge" required>
+        <button class="button" onclick="handlePersonalInfo()">Valider</button>
+    </div>
+
+    <div class="screen" id="emotionScreen">
+        <h2>Comment vous sentez-vous aujourd'hui ?</h2>
+        <input type="text" id="emotion" placeholder="Décrivez votre émotion" required>
+        <button class="button" onclick="showSuggestions()">Valider</button>
+    </div>
+
+    <div class="screen" id="suggestionsScreen">
+        <h2>Nous vous suggérons ces boissons :</h2>
+        <div id="suggested-drinks">
+            <!-- Dynamically populated -->
+        </div>
+        <button class="button" onclick="showMenu()">Voir le menu complet</button>
+        <button class="button" onclick="showCart()">Voir mon panier</button>
+        <button class="button" onclick="proceedToPayment()">Passer à la commande</button>
+    </div>
+
+    <div class="screen" id="menuScreen">
+        <h2>Menu Complet</h2>
+        <div id="full-menu">
+            <!-- Dynamically populated -->
+        </div>
+        <button class="button" onclick="closeMenu()">Fermer le menu</button>
+    </div>
+
+    <div class="screen" id="cartScreen">
+        <h2>Votre panier :</h2>
+        <div id="cart-items"></div>
+        <button class="button" onclick="proceedToPayment()">Passer à la commande</button>
+        <button class="button" onclick="clearCart()">Vider le panier</button>
+    </div>
+
+    <div class="screen" id="paymentScreen">
+        <h2>Finaliser votre commande</h2>
+        <p>Veuillez entrer vos informations de paiement :</p>
+        <input type="text" id="payment-name" placeholder="Nom" required>
+        <input type="text" id="payment-card" placeholder="Numéro de carte" required>
+        <button class="button" onclick="finishPayment()">Payer</button>
+    </div>
+
+    <script>
+        let cart = [];
+        let drinks = [
+            { name: "Limonade Revivo", ingredients: ["Citron", "Sucre", "Eau"], mood: "heureux" },
+            { name: "Thé à la menthe", ingredients: ["Menthe", "Thé vert", "Miel"], mood: "calme" },
+            { name: "Jus de cerise", ingredients: ["Cerise", "Sucre", "Eau"], mood: "triste" },
+            { name: "Smoothie énergétique", ingredients: ["Banane", "Épinards", "Amandes"], mood: "fatigué" },
+            { name: "Café énergisant", ingredients: ["Café", "Miel", "Lait"], mood: "énergique" },
+            { name: "Jus de pomme et gingembre", ingredients: ["Pomme", "Gingembre", "Miel"], mood: "stressé" }
+        ];
+        let discount = 0;
+
+        function start() {
+            document.getElementById('introScreen').classList.remove('active');
+            document.getElementById('personalInfoScreen').classList.add('active');
+        }
+
+        function handlePersonalInfo() {
+            let age = document.getElementById('age').value;
+            if (age <= 26) {
+                discount = 0.2; // 20% discount
+                alert("Vous avez droit à une réduction de 20% !");
+            } else {
+                discount = 0;
+            }
+            document.getElementById('personalInfoScreen').classList.remove('active');
+            document.getElementById('emotionScreen').classList.add('active');
+        }
+
+        function showSuggestions() {
+            let emotion = document.getElementById('emotion').value.toLowerCase();
+            document.getElementById('emotionScreen').classList.remove('active');
+            document.getElementById('suggestionsScreen').classList.add('active');
+            
+            // Suggest drinks based on emotion
+            let suggestedDrinks = drinks.filter(drink => drink.mood.toLowerCase().includes(emotion));
+
+            if (suggestedDrinks.length === 0) {
+                suggestedDrinks = drinks; // If no match, show all drinks
+            }
+
+            let suggestedDrinksHTML = suggestedDrinks.map(drink => `
+                <li onclick="addToCart('${drink.name}')">
+                    ${drink.name} - Ingrédients: ${drink.ingredients.join(", ")}
+                </li>
+            `).join("");
+            
+            document.getElementById('suggested-drinks').innerHTML = `<ul>${suggestedDrinksHTML}</ul>`;
+        }
+
+        function addToCart(drinkName) {
+            cart.push(drinkName);
+            showCart();
+        }
+
+        function showCart() {
+            let cartItemsHTML = cart.map(item => `<p>${item}</p>`).join("");
+            document.getElementById('cart-items').innerHTML = cartItemsHTML;
+            document.getElementById('cartScreen').classList.add('active');
+        }
+
+        function clearCart() {
+            cart = [];
+            showCart();
+        }
+
+        function showMenu() {
+            document.getElementById('suggestionsScreen').classList.remove('active');
+            document.getElementById('menuScreen').classList.add('active');
+
+            let menuHTML = drinks.map(drink => `
+                <li onclick="addToCart('${drink.name}')">
+                    ${drink.name} - Ingrédients: ${drink.ingredients.join(", ")}
+                </li>
+            `).join("");
+
+            document.getElementById('full-menu').innerHTML = `<ul>${menuHTML}</ul>`;
+        }
+
+        function closeMenu() {
+            document.getElementById('menuScreen').classList.remove('active');
+            document.getElementById('suggestionsScreen').classList.add('active');
+        }
+
+        function proceedToPayment() {
+            document.getElementById('cartScreen').classList.remove('active');
+            document.getElementById('paymentScreen').classList.add('active');
+        }
+
+        function finishPayment() {
+            alert("Commande validée !");
+            cart = [];
+            document.getElementById('paymentScreen').classList.remove('active');
+            document.getElementById('introScreen').classList.add('active');
+        }
+    </script>
+
+</body>
+</html>
